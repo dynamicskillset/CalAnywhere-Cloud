@@ -40,7 +40,10 @@ export function CreatePagePage() {
   const [ownerName, setOwnerName] = useState("");
   const [bio, setBio] = useState("");
   const [notificationEmail, setNotificationEmail] = useState("");
-  const [calendarUrl, setCalendarUrl] = useState("");
+  const [calendarUrls, setCalendarUrls] = useState<string[]>([""]);
+  const [calendarValidation, setCalendarValidation] = useState<
+    Array<{ valid: boolean | null; eventCount: number | null }>
+  >([{ valid: null, eventCount: null }]);
   const [defaultDurationMinutes, setDefaultDurationMinutes] = useState(30);
   const [bufferMinutes, setBufferMinutes] = useState(0);
   const [dateRangeDays, setDateRangeDays] = useState(60);
@@ -52,43 +55,49 @@ export function CreatePagePage() {
   const [isValidating, setIsValidating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [calendarValid, setCalendarValid] = useState<boolean | null>(null);
-  const [calendarEventCount, setCalendarEventCount] = useState<number | null>(
-    null
-  );
   const [expandedGuide, setExpandedGuide] = useState<string | null>(null);
 
   useEffect(() => {
     document.title = "Create a page - CalAnywhere";
   }, []);
 
-  const validateCalendarUrl = useCallback(async (url: string) => {
-    if (!url.trim()) {
-      setCalendarValid(null);
-      setCalendarEventCount(null);
-      return;
-    }
+  const updateCalendarUrl = (index: number, value: string) => {
+    setCalendarUrls((prev) => prev.map((u, i) => (i === index ? value : u)));
+    setCalendarValidation((prev) =>
+      prev.map((v, i) => (i === index ? { valid: null, eventCount: null } : v))
+    );
+  };
 
+  const addCalendarUrl = () => {
+    setCalendarUrls((prev) => [...prev, ""]);
+    setCalendarValidation((prev) => [...prev, { valid: null, eventCount: null }]);
+  };
+
+  const removeCalendarUrl = (index: number) => {
+    setCalendarUrls((prev) => prev.filter((_, i) => i !== index));
+    setCalendarValidation((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const validateCalendarUrl = useCallback(async (url: string, index: number) => {
+    if (!url.trim()) return;
     setIsValidating(true);
-    setCalendarValid(null);
-    setCalendarEventCount(null);
-
+    setCalendarValidation((prev) =>
+      prev.map((v, i) => (i === index ? { valid: null, eventCount: null } : v))
+    );
     try {
       const resp = await axios.post<{ eventCount: number }>(
         "/api/pages/validate",
         { calendarUrls: [url.trim()] }
       );
-      setCalendarValid(true);
-      setCalendarEventCount(resp.data.eventCount);
-    } catch (err) {
-      setCalendarValid(false);
-      if (
-        axios.isAxiosError(err) &&
-        err.response?.data?.error
-      ) {
-        // We show the specific error in the validation message area
-        setCalendarEventCount(null);
-      }
+      setCalendarValidation((prev) =>
+        prev.map((v, i) =>
+          i === index ? { valid: true, eventCount: resp.data.eventCount } : v
+        )
+      );
+    } catch {
+      setCalendarValidation((prev) =>
+        prev.map((v, i) => (i === index ? { valid: false, eventCount: null } : v))
+      );
     } finally {
       setIsValidating(false);
     }
@@ -99,15 +108,15 @@ export function CreatePagePage() {
     setError(null);
 
     const trimmedName = ownerName.trim();
-    const trimmedUrl = calendarUrl.trim();
+    const filledUrls = calendarUrls.map((u) => u.trim()).filter(Boolean);
 
     if (!trimmedName || trimmedName.length < 2) {
       setError("Display name is required (at least 2 characters).");
       return;
     }
 
-    if (!trimmedUrl) {
-      setError("Please provide a calendar URL.");
+    if (filledUrls.length === 0) {
+      setError("Please provide at least one iCal link.");
       return;
     }
 
@@ -119,7 +128,7 @@ export function CreatePagePage() {
         ownerName: trimmedName,
         bio: bio.trim() || undefined,
         notificationEmail: notificationEmail.trim() || undefined,
-        calendarUrls: [trimmedUrl],
+        calendarUrls: filledUrls,
         defaultDurationMinutes,
         bufferMinutes,
         dateRangeDays,
@@ -230,54 +239,75 @@ export function CreatePagePage() {
         <section className="card space-y-5">
           <h2 className="text-base font-semibold text-content">Calendar</h2>
 
-          <div>
-            <label htmlFor="calendar-url" className="label required-indicator">
-              iCal subscription URL
-            </label>
-            <div className="mt-2 flex gap-2">
-              <input
-                id="calendar-url"
-                type="url"
-                required
-                value={calendarUrl}
-                onChange={(e) => {
-                  setCalendarUrl(e.target.value);
-                  setCalendarValid(null);
-                  setCalendarEventCount(null);
-                }}
-                placeholder="https://calendar.example.com/your-calendar.ics"
-                className="input flex-1"
-                aria-describedby="calendar-url-hint"
-              />
-              <button
-                type="button"
-                onClick={() => validateCalendarUrl(calendarUrl)}
-                disabled={isValidating || !calendarUrl.trim()}
-                className="btn-secondary shrink-0"
+          {calendarUrls.map((url, index) => (
+            <div key={index}>
+              <label
+                htmlFor={`calendar-url-${index}`}
+                className="label required-indicator"
               >
-                {isValidating ? "Checking..." : "Validate"}
-              </button>
+                {index === 0 ? "iCal subscription URL" : "Second iCal link"}
+              </label>
+              <div className="mt-2 flex gap-2">
+                <input
+                  id={`calendar-url-${index}`}
+                  type="url"
+                  required={index === 0}
+                  value={url}
+                  onChange={(e) => updateCalendarUrl(index, e.target.value)}
+                  placeholder="https://calendar.example.com/your-calendar.ics"
+                  className="input flex-1"
+                  aria-describedby={index === 0 ? "calendar-url-hint" : undefined}
+                />
+                <button
+                  type="button"
+                  onClick={() => validateCalendarUrl(url, index)}
+                  disabled={isValidating || !url.trim()}
+                  className="btn-secondary shrink-0"
+                >
+                  {isValidating ? "Checking..." : "Validate"}
+                </button>
+                {index > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => removeCalendarUrl(index)}
+                    className="btn-ghost text-xs"
+                    aria-label="Remove second iCal link"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+              {calendarValidation[index]?.valid === true && (
+                <p className="mt-2 text-sm text-success-text" role="status">
+                  Calendar loaded successfully
+                  {calendarValidation[index].eventCount !== null &&
+                    ` (${calendarValidation[index].eventCount} event${calendarValidation[index].eventCount !== 1 ? "s" : ""} found)`}
+                  .
+                </p>
+              )}
+              {calendarValidation[index]?.valid === false && (
+                <p className="mt-2 text-sm text-error-text" role="alert">
+                  Could not load or parse the calendar. Please check the URL and
+                  try again.
+                </p>
+              )}
             </div>
-            <p id="calendar-url-hint" className="label-hint">
-              CalAnywhere reads your busy/free times from this feed. It is never
-              stored in plain text.
-            </p>
+          ))}
 
-            {calendarValid === true && (
-              <p className="mt-2 text-sm text-green-400" role="status">
-                Calendar loaded successfully
-                {calendarEventCount !== null &&
-                  ` (${calendarEventCount} event${calendarEventCount !== 1 ? "s" : ""} found)`}
-                .
-              </p>
-            )}
-            {calendarValid === false && (
-              <p className="mt-2 text-sm text-red-400" role="alert">
-                Could not load or parse the calendar. Please check the URL and
-                try again.
-              </p>
-            )}
-          </div>
+          {calendarUrls.length < 2 && (
+            <button
+              type="button"
+              onClick={addCalendarUrl}
+              className="btn-ghost text-sm"
+            >
+              + Add a second iCal link
+            </button>
+          )}
+
+          <p id="calendar-url-hint" className="label-hint">
+            CalAnywhere reads your busy/free times from this feed. Links are
+            never stored in plain text. Free tier: up to 2 iCal links per page.
+          </p>
 
           {/* Provider guides */}
           <div className="space-y-1">

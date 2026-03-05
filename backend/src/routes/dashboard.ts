@@ -10,6 +10,7 @@ import { validateMultipleCalendarUrls } from '../services/calendar';
 // Free tier limits
 const FREE_MAX_PAGES = 1;
 const FREE_MAX_EXPIRY_DAYS = 30;
+const FREE_MAX_CALENDAR_URLS = 2; // TODO: higher limit for paid tier
 
 function generateSlug(): string {
   return uuidv4().replace(/-/g, '').slice(0, 22);
@@ -158,8 +159,8 @@ export function createDashboardRouter(pool: Pool): Router {
       ? rawUrls.filter((u: unknown) => typeof u === 'string' && (u as string).trim().length > 0)
       : [];
 
-    if (calendarUrls.length === 0 || calendarUrls.length > 5) {
-      return res.status(400).json({ error: 'Provide between 1 and 5 calendar URLs.' });
+    if (calendarUrls.length === 0 || calendarUrls.length > FREE_MAX_CALENDAR_URLS) {
+      return res.status(400).json({ error: `Free tier allows up to ${FREE_MAX_CALENDAR_URLS} iCal links per page.` });
     }
 
     for (const url of calendarUrls) {
@@ -389,9 +390,9 @@ export function createDashboardRouter(pool: Pool): Router {
 
       if (newCalendarUrls && Array.isArray(newCalendarUrls)) {
         const urls = newCalendarUrls.filter(u => typeof u === 'string' && u.trim().length > 0);
-        if (urls.length === 0 || urls.length > 5) {
+        if (urls.length === 0 || urls.length > FREE_MAX_CALENDAR_URLS) {
           await client.query('ROLLBACK');
-          return res.status(400).json({ error: 'Provide between 1 and 5 calendar URLs.' });
+          return res.status(400).json({ error: `Free tier allows up to ${FREE_MAX_CALENDAR_URLS} iCal links per page.` });
         }
 
         for (const url of urls) {

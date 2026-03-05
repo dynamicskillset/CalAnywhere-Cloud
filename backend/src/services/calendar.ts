@@ -87,7 +87,14 @@ export async function fetchAndParseCalendar(
     }
   });
 
-  const parsed = ical.sync.parseICS(response.data);
+  // rrule-temporal requires UNTIL to be a UTC datetime (ending in Z).
+  // Google Calendar sometimes emits date-only UNTIL (e.g. UNTIL=20201102)
+  // or datetime without Z (e.g. UNTIL=20201102T030000). Normalise both.
+  const sanitised = response.data
+    .replace(/UNTIL=(\d{8})(?!T)([;:\r\n])/g, "UNTIL=$1T000000Z$2")  // date-only → UTC midnight
+    .replace(/UNTIL=(\d{8}T\d{6})(?!Z)/g, "UNTIL=$1Z");               // datetime missing Z
+
+  const parsed = ical.sync.parseICS(sanitised);
   const busySlots: BusySlot[] = [];
 
   // Extract timezone definitions

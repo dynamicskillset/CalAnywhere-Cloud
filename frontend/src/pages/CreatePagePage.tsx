@@ -197,25 +197,6 @@ export function CreatePagePage() {
           </div>
 
           <div>
-            <label htmlFor="page-title" className="label">
-              Page title
-            </label>
-            <input
-              id="page-title"
-              type="text"
-              maxLength={100}
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Office hours, 1:1 catch-up"
-              className="input mt-2"
-              aria-describedby="page-title-hint"
-            />
-            <p id="page-title-hint" className="label-hint">
-              Optional. Helps you tell pages apart in the dashboard.
-            </p>
-          </div>
-
-          <div>
             <label htmlFor="bio" className="label">
               Bio
             </label>
@@ -231,6 +212,25 @@ export function CreatePagePage() {
             />
             <p id="bio-hint" className="label-hint">
               Optional. Up to 200 characters.
+            </p>
+          </div>
+
+          <div>
+            <label htmlFor="page-title" className="label">
+              Page title
+            </label>
+            <input
+              id="page-title"
+              type="text"
+              maxLength={100}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Office hours, 1:1 catch-up"
+              className="input mt-2"
+              aria-describedby="page-title-hint"
+            />
+            <p id="page-title-hint" className="label-hint">
+              Optional. Helps you tell pages apart in the dashboard.
             </p>
           </div>
         </section>

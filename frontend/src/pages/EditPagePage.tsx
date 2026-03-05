@@ -239,6 +239,24 @@ export function EditPagePage() {
           </div>
 
           <div>
+            <label htmlFor="bio" className="label">
+              Bio
+            </label>
+            <textarea
+              id="bio"
+              maxLength={200}
+              rows={2}
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              className="input mt-2 resize-none"
+              aria-describedby="bio-hint"
+            />
+            <p id="bio-hint" className="label-hint">
+              Optional. Up to 200 characters.
+            </p>
+          </div>
+
+          <div>
             <label htmlFor="page-title" className="label">
               Page title
             </label>
@@ -254,24 +272,6 @@ export function EditPagePage() {
             />
             <p id="page-title-hint" className="label-hint">
               Optional. Helps you tell pages apart in the dashboard.
-            </p>
-          </div>
-
-          <div>
-            <label htmlFor="bio" className="label">
-              Bio
-            </label>
-            <textarea
-              id="bio"
-              maxLength={200}
-              rows={2}
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              className="input mt-2 resize-none"
-              aria-describedby="bio-hint"
-            />
-            <p id="bio-hint" className="label-hint">
-              Optional. Up to 200 characters.
             </p>
           </div>
         </section>

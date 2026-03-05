@@ -2,16 +2,16 @@ import { FormEvent, useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { suggestEmojiIds, signup } from "../services/auth";
-import { createPage } from "../services/dashboard";
+import { createPage, updatePage } from "../services/dashboard";
 import { useAuth } from "../contexts/AuthContext";
 
-// Internal steps: 1–6. Visual indicator maps to 4 dots.
-type InternalStep = 1 | 2 | 3 | 4 | 5 | 6;
+// Internal steps: 1–7. Visual indicator maps to 4 dots.
+type InternalStep = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 function indicatorStep(s: InternalStep): 1 | 2 | 3 | 4 {
   if (s <= 2) return 1;
   if (s === 3) return 2;
-  if (s === 4) return 3;
+  if (s <= 5) return 3;
   return 4;
 }
 
@@ -27,8 +27,9 @@ const STEP_TITLES: Record<InternalStep, string> = {
   2: "Remember your Emoji ID - CalAnywhere",
   3: "Connect your calendar - CalAnywhere",
   4: "Set up your first page - CalAnywhere",
-  5: "Save your recovery codes - CalAnywhere",
-  6: "CalAnywhere",
+  5: "Add a second calendar - CalAnywhere",
+  6: "Save your recovery codes - CalAnywhere",
+  7: "CalAnywhere",
 };
 
 const ICAL_GUIDES: { provider: string; steps: string }[] = [
@@ -93,7 +94,14 @@ export function SignupPage() {
   const [expiryDays, setExpiryDays] = useState(30);
   const [isCreatingPage, setIsCreatingPage] = useState(false);
 
-  // Step 5: Recovery codes
+  // Step 5: Second calendar (optional)
+  const [createdPageId, setCreatedPageId] = useState<string | null>(null);
+  const [secondIcalUrl, setSecondIcalUrl] = useState("");
+  const [secondCalValid, setSecondCalValid] = useState<boolean | null>(null);
+  const [isValidatingSecond, setIsValidatingSecond] = useState(false);
+  const [isAddingSecondCal, setIsAddingSecondCal] = useState(false);
+
+  // Step 6: Recovery codes
   const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
   const [savedConfirmed, setSavedConfirmed] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
@@ -195,7 +203,7 @@ export function SignupPage() {
 
     setIsCreatingPage(true);
     try {
-      await createPage({
+      const result = await createPage({
         title: pageTitle.trim() || undefined,
         ownerName: trimmedName,
         bio: bio.trim() || undefined,
@@ -208,6 +216,7 @@ export function SignupPage() {
         includeWeekends,
         expiryDays,
       });
+      setCreatedPageId(result.id);
       setError(null);
       setStep(5);
     } catch (err: unknown) {
@@ -225,7 +234,47 @@ export function SignupPage() {
 
   const handlePageSkip = () => {
     setError(null);
-    setStep(5);
+    setStep(6); // skip page creation and second calendar
+  };
+
+  // --- Step 5: Add second calendar ---
+  const validateSecondUrl = useCallback(async (url: string) => {
+    if (!url.trim()) return;
+    setIsValidatingSecond(true);
+    setSecondCalValid(null);
+    try {
+      await axios.post("/api/pages/validate", { calendarUrls: [url.trim()] });
+      setSecondCalValid(true);
+    } catch {
+      setSecondCalValid(false);
+    } finally {
+      setIsValidatingSecond(false);
+    }
+  }, []);
+
+  const handleSecondCalSubmit = async () => {
+    if (!createdPageId || !secondIcalUrl.trim()) return;
+    setError(null);
+    setIsAddingSecondCal(true);
+    try {
+      await updatePage(createdPageId, {
+        calendarUrls: [icalUrl.trim(), secondIcalUrl.trim()],
+      });
+      setStep(6);
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err) && err.response?.data?.error) {
+        setError(err.response.data.error);
+      } else {
+        setError("Could not add the calendar. You can add it later from your dashboard.");
+      }
+    } finally {
+      setIsAddingSecondCal(false);
+    }
+  };
+
+  const handleSecondCalSkip = () => {
+    setError(null);
+    setStep(6);
   };
 
   // --- Step 5: Copy recovery codes ---
@@ -247,7 +296,7 @@ export function SignupPage() {
     }
   }, [recoveryCodes]);
 
-  // --- Step 5 → 6: Finish ---
+  // --- Step 6 → dashboard: Finish ---
   const handleFinish = async () => {
     await refresh();
     navigate("/dashboard");
@@ -596,26 +645,6 @@ export function SignupPage() {
               </p>
             </div>
 
-            {/* Page title */}
-            <div>
-              <label htmlFor="page-title" className="label">
-                Page title
-              </label>
-              <input
-                id="page-title"
-                type="text"
-                maxLength={100}
-                value={pageTitle}
-                onChange={(e) => setPageTitle(e.target.value)}
-                placeholder="e.g. Office hours, 1:1 catch-up"
-                className="input mt-2"
-                aria-describedby="page-title-hint"
-              />
-              <p id="page-title-hint" className="label-hint">
-                Optional. Helps you tell pages apart in the dashboard.
-              </p>
-            </div>
-
             {/* Bio */}
             <div>
               <label htmlFor="bio" className="label">
@@ -633,6 +662,26 @@ export function SignupPage() {
               />
               <p id="bio-hint" className="label-hint">
                 Optional. Up to 200 characters.
+              </p>
+            </div>
+
+            {/* Page title */}
+            <div>
+              <label htmlFor="page-title" className="label">
+                Page title
+              </label>
+              <input
+                id="page-title"
+                type="text"
+                maxLength={100}
+                value={pageTitle}
+                onChange={(e) => setPageTitle(e.target.value)}
+                placeholder="e.g. Office hours, 1:1 catch-up"
+                className="input mt-2"
+                aria-describedby="page-title-hint"
+              />
+              <p id="page-title-hint" className="label-hint">
+                Optional. Helps you tell pages apart in the dashboard.
               </p>
             </div>
 
@@ -807,8 +856,86 @@ export function SignupPage() {
           </form>
         )}
 
-        {/* ===== Step 5: Save your recovery codes ===== */}
+        {/* ===== Step 5: Add a second calendar (optional) ===== */}
         {step === 5 && (
+          <div className="space-y-5">
+            <div>
+              <h2 className="text-lg font-semibold text-content">
+                Add a second calendar
+              </h2>
+              <p className="mt-1 text-sm text-content-muted">
+                If you use more than one calendar, add a second iCal link so
+                your availability reflects all your commitments. You can skip
+                this and add it later from your dashboard.
+              </p>
+            </div>
+
+            <div>
+              <label htmlFor="second-ical-url" className="label">
+                Second iCal link
+              </label>
+              <div className="mt-2 flex gap-2">
+                <input
+                  id="second-ical-url"
+                  type="url"
+                  value={secondIcalUrl}
+                  onChange={(e) => {
+                    setSecondIcalUrl(e.target.value);
+                    setSecondCalValid(null);
+                  }}
+                  placeholder="https://calendar.example.com/second-calendar.ics"
+                  className="input flex-1"
+                />
+                <button
+                  type="button"
+                  onClick={() => validateSecondUrl(secondIcalUrl)}
+                  disabled={isValidatingSecond || !secondIcalUrl.trim()}
+                  className="btn-secondary shrink-0"
+                >
+                  {isValidatingSecond ? "Checking..." : "Validate"}
+                </button>
+              </div>
+              {secondCalValid === true && (
+                <p className="mt-2 text-sm text-success-text" role="status">
+                  Calendar loaded successfully.
+                </p>
+              )}
+              {secondCalValid === false && (
+                <p className="mt-2 text-sm text-error-text" role="alert">
+                  Could not load the calendar. Please check the URL.
+                </p>
+              )}
+            </div>
+
+            {error && (
+              <div className="alert-error" role="alert" aria-live="assertive">
+                {error}
+              </div>
+            )}
+
+            <div className="flex items-center justify-between pt-2">
+              <button
+                type="button"
+                onClick={handleSecondCalSkip}
+                className="btn-ghost"
+              >
+                Skip
+              </button>
+              <button
+                type="button"
+                onClick={handleSecondCalSubmit}
+                disabled={isAddingSecondCal || !secondIcalUrl.trim()}
+                aria-busy={isAddingSecondCal}
+                className="btn-primary"
+              >
+                {isAddingSecondCal ? "Adding..." : "Add calendar"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ===== Step 6: Save your recovery codes ===== */}
+        {step === 6 && (
           <div className="space-y-5">
             <div>
               <h2 className="text-lg font-semibold text-content">

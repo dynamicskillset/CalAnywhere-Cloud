@@ -6,6 +6,7 @@ import { SigninPage } from "./pages/SigninPage";
 import { RecoverPage } from "./pages/RecoverPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { CreatePagePage } from "./pages/CreatePagePage";
+import { EditPagePage } from "./pages/EditPagePage";
 import { RequestsPage } from "./pages/RequestsPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { NavBar } from "./components/NavBar";
@@ -39,6 +40,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <CreatePagePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/edit/:id"
+          element={
+            <ProtectedRoute>
+              <EditPagePage />
             </ProtectedRoute>
           }
         />

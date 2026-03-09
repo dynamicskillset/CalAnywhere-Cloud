@@ -3,11 +3,13 @@ import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { signin } from "../services/auth";
 import { useAuth } from "../contexts/AuthContext";
+import { useConfig } from "../contexts/ConfigContext";
 import { EmojiPicker } from "../components/EmojiPicker";
 
 export function SigninPage() {
   const navigate = useNavigate();
   const { refresh, isAuthenticated } = useAuth();
+  const { signupsEnabled } = useConfig();
 
   const [emojiId, setEmojiId] = useState("");
   const [icalUrl, setIcalUrl] = useState("");
@@ -139,15 +141,17 @@ export function SigninPage() {
       </section>
 
       <div className="space-y-2 text-center text-sm text-content-muted">
-        <p>
-          Don't have an account?{" "}
-          <Link
-            to="/signup"
-            className="text-accent-text hover:text-accent-hover"
-          >
-            Create one
-          </Link>
-        </p>
+        {signupsEnabled && (
+          <p>
+            Don't have an account?{" "}
+            <Link
+              to="/signup"
+              className="text-accent-text hover:text-accent-hover"
+            >
+              Create one
+            </Link>
+          </p>
+        )}
         <p>
           Lost access to your calendar URL?{" "}
           <Link

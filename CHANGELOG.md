@@ -1,14 +1,6 @@
 # Changelog
 
-This project uses [Pride Versioning](https://pridever.org): **PROUD.DEFAULT.SHAME**
-
-- **PROUD** — bump when proud of the release
-- **DEFAULT** — bump for routine, unremarkable releases
-- **SHAME** — bump when fixing things too embarrassing to admit
-
----
-
-## [1.0.2] — 2026-03-09 (DEFAULT)
+## [1.0.2] — 2026-03-09
 
 Operational infrastructure: admin dashboard, repo consolidation, and relicensing.
 
@@ -25,9 +17,9 @@ Operational infrastructure: admin dashboard, repo consolidation, and relicensing
 
 ---
 
-## [1.0.1] — 2026-03-09 (SHAME)
+## [1.0.1] — 2026-03-09
 
-Addressing the embarrassing hardcoded 09:00–17:00 availability window that shipped in 1.0.0.
+Configurable availability hours and timezone support.
 
 ### Fixed
 
@@ -38,9 +30,9 @@ Addressing the embarrassing hardcoded 09:00–17:00 availability window that shi
 
 ---
 
-## [1.0.0] — 2026-03-05 (PROUD)
+## [1.0.0] — 2026-03-05
 
-First proud release of CalAnywhere Cloud. The core product is complete and in production at scheduler.dougbelshaw.com.
+First release of CalAnywhere. The core product is complete and in production at scheduler.dougbelshaw.com.
 
 ### Added
 

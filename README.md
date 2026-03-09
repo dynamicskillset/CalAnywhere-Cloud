@@ -1,4 +1,4 @@
-![CalAnywhere logo](https://github.com/dynamicskillset/calanywhere-cloud/blob/main/calanywhere.jpg?raw=true)
+![CalAnywhere logo](https://github.com/dynamicskillset/CalAnywhere/blob/main/calanywhere.jpg?raw=true)
 
 ## CalAnywhere
 
@@ -52,13 +52,11 @@ The admin dashboard shows basic stats and a toggle to enable or disable new sign
 
 ### Releases
 
-This project uses [Pride Versioning](https://pridever.org) (**PROUD.DEFAULT.SHAME**).
-
-| Version | Date | Type | Summary |
-|---------|------|------|---------|
-| [1.0.2](CHANGELOG.md#102--2026-03-09-default) | 2026-03-09 | DEFAULT | Admin dashboard, AGPL-3.0 relicensing, repo consolidation |
-| [1.0.1](CHANGELOG.md#101--2026-03-09-shame) | 2026-03-09 | SHAME | Configurable availability hours and timezone with DST support |
-| [1.0.0](CHANGELOG.md#100--2026-03-05-proud) | 2026-03-05 | PROUD | First proud release — auth, dashboard, page ownership, production deploy |
+| Version | Date | Summary |
+|---------|------|---------|
+| [1.0.2](CHANGELOG.md#102--2026-03-09) | 2026-03-09 | Admin dashboard, AGPL-3.0 relicensing, repo consolidation |
+| [1.0.1](CHANGELOG.md#101--2026-03-09) | 2026-03-09 | Configurable availability hours and timezone with DST support |
+| [1.0.0](CHANGELOG.md#100--2026-03-05) | 2026-03-05 | First release — auth, dashboard, page ownership, production deploy |
 
 See [CHANGELOG.md](CHANGELOG.md) for full details.
 

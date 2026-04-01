@@ -12,6 +12,10 @@ const FREE_MAX_PAGES = 1;
 const FREE_MAX_EXPIRY_DAYS = 30;
 const FREE_MAX_CALENDAR_URLS = 2; // TODO: higher limit for paid tier
 
+function isAdminTier(tier: string): boolean {
+  return tier === 'admin';
+}
+
 function generateSlug(): string {
   return uuidv4().replace(/-/g, '').slice(0, 22);
 }
@@ -63,6 +67,7 @@ export function createDashboardRouter(pool: Pool): Router {
    */
   router.get('/pages', async (req: Request, res: Response) => {
     const userId = req.session!.userId;
+    const tier = req.session!.tier ?? 'free';
 
     const { rows } = await pool.query(
       `SELECT
@@ -84,7 +89,7 @@ export function createDashboardRouter(pool: Pool): Router {
          sp.notification_email_tag,
          sp.created_at,
          sp.expires_at,
-         sp.expires_at > NOW() AS is_active,
+         (sp.expires_at IS NULL OR sp.expires_at > NOW()) AS is_active,
          COALESCE(
            array_agg(pc.raw_calendar_url)
              FILTER (WHERE pc.raw_calendar_url IS NOT NULL),
@@ -125,7 +130,8 @@ export function createDashboardRouter(pool: Pool): Router {
     res.json({
       pages,
       activeCount,
-      maxPages: FREE_MAX_PAGES, // TODO: check subscription tier
+      tier,
+      maxPages: isAdminTier(tier) ? null : FREE_MAX_PAGES,
     });
   });
 
@@ -135,6 +141,8 @@ export function createDashboardRouter(pool: Pool): Router {
    */
   router.post('/pages', dashboardWriteLimiter, async (req: Request, res: Response) => {
     const userId = req.session!.userId;
+    const tier = req.session!.tier ?? 'free';
+    const adminUser = isAdminTier(tier);
     const {
       title,
       ownerName,
@@ -196,8 +204,9 @@ export function createDashboardRouter(pool: Pool): Router {
       ? rawUrls.filter((u: unknown) => typeof u === 'string' && (u as string).trim().length > 0)
       : [];
 
-    if (calendarUrls.length === 0 || calendarUrls.length > FREE_MAX_CALENDAR_URLS) {
-      return res.status(400).json({ error: `Free tier allows up to ${FREE_MAX_CALENDAR_URLS} iCal links per page.` });
+    const maxCalendarUrls = adminUser ? 10 : FREE_MAX_CALENDAR_URLS;
+    if (calendarUrls.length === 0 || calendarUrls.length > maxCalendarUrls) {
+      return res.status(400).json({ error: `You can add up to ${maxCalendarUrls} iCal links per page.` });
     }
 
     for (const url of calendarUrls) {
@@ -225,29 +234,35 @@ export function createDashboardRouter(pool: Pool): Router {
       });
     }
 
-    // Enforce free tier page limit
-    // TODO: check subscription tier for paid users
-    const { rows: activeRows } = await pool.query(
-      `SELECT COUNT(*)::int AS count
-       FROM scheduling_pages
-       WHERE user_id = $1 AND expires_at > NOW()`,
-      [userId]
-    );
-    const activeCount = activeRows[0].count;
+    // Enforce page limit (skipped for admin tier)
+    if (!adminUser) {
+      const { rows: activeRows } = await pool.query(
+        `SELECT COUNT(*)::int AS count
+         FROM scheduling_pages
+         WHERE user_id = $1
+           AND (expires_at IS NULL OR expires_at > NOW())`,
+        [userId]
+      );
+      const activeCount = activeRows[0].count;
 
-    if (activeCount >= FREE_MAX_PAGES) {
-      return res.status(403).json({
-        error: `You have reached the limit of ${FREE_MAX_PAGES} active page(s). Delete an existing page or wait for it to expire.`,
-      });
+      if (activeCount >= FREE_MAX_PAGES) {
+        return res.status(403).json({
+          error: `You have reached the limit of ${FREE_MAX_PAGES} active page(s). Delete an existing page or wait for it to expire.`,
+        });
+      }
     }
 
-    // Enforce free tier max expiry
-    const days = typeof expiryDays === 'number' && expiryDays > 0
-      ? Math.min(expiryDays, FREE_MAX_EXPIRY_DAYS) // TODO: higher limit for paid
-      : FREE_MAX_EXPIRY_DAYS;
-
+    // Compute expiry — admin users may pass null for no expiry
     const now = Date.now();
-    const expiresAt = new Date(now + days * 24 * 60 * 60 * 1000);
+    let expiresAt: Date | null;
+    if (adminUser && (expiryDays === null || expiryDays === undefined)) {
+      expiresAt = null;
+    } else {
+      const days = typeof expiryDays === 'number' && expiryDays > 0
+        ? (adminUser ? expiryDays : Math.min(expiryDays, FREE_MAX_EXPIRY_DAYS))
+        : FREE_MAX_EXPIRY_DAYS;
+      expiresAt = new Date(now + days * 24 * 60 * 60 * 1000);
+    }
 
     // Encrypt notification email if provided
     let emailEnc: string | null = null;
@@ -295,7 +310,7 @@ export function createDashboardRouter(pool: Pool): Router {
           endTime,
           timezone,
           new Date(now).toISOString(),
-          expiresAt.toISOString(),
+          expiresAt ? expiresAt.toISOString() : null,
         ]
       );
 
@@ -315,7 +330,7 @@ export function createDashboardRouter(pool: Pool): Router {
         slug,
         title: title ? title.trim() : null,
         ownerName: ownerName.trim(),
-        expiresAt: expiresAt.toISOString(),
+        expiresAt: expiresAt ? expiresAt.toISOString() : null,
         isActive: true,
       });
     } catch (err) {

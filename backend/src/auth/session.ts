@@ -7,6 +7,7 @@ const SESSION_TTL_HOURS = 24 * 7; // 1 week
 export interface Session {
   userId: string;
   emojiId: string;
+  tier: string;
 }
 
 /**
@@ -42,7 +43,7 @@ export async function validateSession(
   const tokenHash = hashToken(token);
 
   const { rows } = await pool.query(
-    `SELECT s.user_id, u.emoji_id
+    `SELECT s.user_id, u.emoji_id, u.tier
      FROM sessions s
      JOIN users u ON u.id = s.user_id
      WHERE s.token_hash = $1
@@ -51,7 +52,7 @@ export async function validateSession(
   );
 
   if (rows.length === 0) return null;
-  return { userId: rows[0].user_id, emojiId: rows[0].emoji_id };
+  return { userId: rows[0].user_id, emojiId: rows[0].emoji_id, tier: rows[0].tier ?? 'free' };
 }
 
 /**

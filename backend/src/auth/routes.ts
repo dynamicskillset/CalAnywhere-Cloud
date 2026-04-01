@@ -279,7 +279,7 @@ export function createAuthRouter(pool: Pool): Router {
     const session = await validateSession(pool, token);
     if (!session) return res.status(401).json({ error: 'Session expired' });
 
-    res.json({ emojiId: session.emojiId });
+    res.json({ emojiId: session.emojiId, tier: session.tier });
   });
 
   return router;

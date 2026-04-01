@@ -2,6 +2,7 @@ import axios from "axios";
 
 export interface AuthSession {
   emojiId: string;
+  tier: string;
 }
 
 export interface SignupResult {

@@ -185,5 +185,53 @@ export function createAdminRouter(pool: Pool): Router {
     res.json({ ok: true });
   });
 
+  /**
+   * GET /api/admin/users?emojiId=:id — look up a user by emoji ID
+   */
+  router.get('/users', guard, async (req: Request, res: Response) => {
+    const emojiId = typeof req.query.emojiId === 'string' ? req.query.emojiId.trim() : null;
+    if (!emojiId) {
+      return res.status(400).json({ error: 'emojiId query parameter is required.' });
+    }
+
+    const { rows } = await pool.query(
+      `SELECT id, emoji_id, tier, created_at,
+              (SELECT COUNT(*)::int FROM scheduling_pages WHERE user_id = users.id) AS page_count
+       FROM users WHERE emoji_id = $1`,
+      [emojiId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    const u = rows[0];
+    res.json({ user: { id: u.id, emojiId: u.emoji_id, tier: u.tier, createdAt: u.created_at, pageCount: u.page_count } });
+  });
+
+  /**
+   * PATCH /api/admin/users/:id — update a user's tier
+   * Body: { tier: 'free' | 'admin' }
+   */
+  router.patch('/users/:id', guard, async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { tier } = req.body;
+
+    if (tier !== 'free' && tier !== 'admin') {
+      return res.status(400).json({ error: 'tier must be "free" or "admin".' });
+    }
+
+    const { rowCount } = await pool.query(
+      'UPDATE users SET tier = $1 WHERE id = $2',
+      [tier, id]
+    );
+
+    if (rowCount === 0) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    res.json({ ok: true });
+  });
+
   return router;
 }

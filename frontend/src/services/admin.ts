@@ -31,3 +31,20 @@ export async function getAdminSettings(): Promise<Record<string, string>> {
 export async function patchAdminSettings(updates: Record<string, string>): Promise<void> {
   await axios.patch("/api/admin/settings", updates);
 }
+
+export interface AdminUser {
+  id: string;
+  emojiId: string;
+  tier: string;
+  createdAt: string;
+  pageCount: number;
+}
+
+export async function lookupUser(emojiId: string): Promise<AdminUser> {
+  const r = await axios.get<{ user: AdminUser }>(`/api/admin/users?emojiId=${encodeURIComponent(emojiId)}`);
+  return r.data.user;
+}
+
+export async function setUserTier(userId: string, tier: 'free' | 'admin'): Promise<void> {
+  await axios.patch(`/api/admin/users/${userId}`, { tier });
+}

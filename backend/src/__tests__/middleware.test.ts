@@ -40,7 +40,7 @@ describe('requireAuth middleware', () => {
   });
 
   it('attaches session to req and calls next() for a valid session', async () => {
-    const session = { userId: 'user-1', emojiId: '🐶🍕🚀' };
+    const session = { userId: 'user-1', emojiId: '🐶🍕🚀', tier: 'free' };
     mockValidateSession.mockResolvedValue(session);
     const pool: any = {};
     const { req, res, next } = makeReqRes('validtoken');

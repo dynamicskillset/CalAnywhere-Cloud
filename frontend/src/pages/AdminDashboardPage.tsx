@@ -6,7 +6,10 @@ import {
   getAdminStats,
   getAdminSettings,
   patchAdminSettings,
+  lookupUser,
+  setUserTier,
   type AdminStats,
+  type AdminUser,
 } from "../services/admin";
 
 export function AdminDashboardPage() {
@@ -16,6 +19,13 @@ export function AdminDashboardPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+
+  // User management
+  const [userSearch, setUserSearch] = useState("");
+  const [userResult, setUserResult] = useState<AdminUser | null>(null);
+  const [userSearchError, setUserSearchError] = useState<string | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isUpdatingTier, setIsUpdatingTier] = useState(false);
 
   useEffect(() => {
     document.title = "Admin dashboard — CalAnywhere";
@@ -46,6 +56,37 @@ export function AdminDashboardPage() {
   const handleLogout = async () => {
     await adminLogout();
     navigate("/admin/login", { replace: true });
+  };
+
+  const handleUserSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const query = userSearch.trim();
+    if (!query) return;
+    setIsSearching(true);
+    setUserResult(null);
+    setUserSearchError(null);
+    try {
+      const user = await lookupUser(query);
+      setUserResult(user);
+    } catch {
+      setUserSearchError("User not found.");
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleTierToggle = async () => {
+    if (!userResult) return;
+    setIsUpdatingTier(true);
+    const newTier = userResult.tier === 'admin' ? 'free' : 'admin';
+    try {
+      await setUserTier(userResult.id, newTier);
+      setUserResult((prev) => prev ? { ...prev, tier: newTier } : prev);
+    } catch {
+      setUserSearchError("Could not update tier. Please try again.");
+    } finally {
+      setIsUpdatingTier(false);
+    }
   };
 
   const signupsEnabled = settings.signups_enabled !== "false";
@@ -138,6 +179,67 @@ export function AdminDashboardPage() {
         <p className="text-xs text-content-subtle">
           Additional feature flags will appear here.
         </p>
+      </section>
+
+      {/* User management */}
+      <section className="card mt-6 space-y-5" aria-label="User management">
+        <h2 className="text-sm font-semibold text-content">User management</h2>
+
+        <form onSubmit={handleUserSearch} className="flex gap-2">
+          <input
+            type="text"
+            value={userSearch}
+            onChange={(e) => setUserSearch(e.target.value)}
+            placeholder="Emoji ID (e.g. 🐉🌟🎯)"
+            className="input flex-1 text-sm"
+            aria-label="Search by Emoji ID"
+          />
+          <button
+            type="submit"
+            disabled={isSearching || !userSearch.trim()}
+            className="btn-secondary text-sm"
+          >
+            {isSearching ? "Searching…" : "Look up"}
+          </button>
+        </form>
+
+        {userSearchError && (
+          <p className="text-sm text-error-text" role="alert">{userSearchError}</p>
+        )}
+
+        {userResult && (
+          <div className="rounded-lg border border-border p-4 space-y-3">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium text-content emoji-spaced">{userResult.emojiId}</p>
+                <p className="text-xs text-content-muted mt-0.5">
+                  {userResult.pageCount} page{userResult.pageCount !== 1 ? "s" : ""} &middot; joined {new Date(userResult.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                  userResult.tier === 'admin'
+                    ? "bg-accent/20 text-accent-text"
+                    : "bg-surface-overlay text-content-muted"
+                }`}>
+                  {userResult.tier}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleTierToggle}
+                  disabled={isUpdatingTier}
+                  className="btn-secondary text-xs"
+                >
+                  {isUpdatingTier
+                    ? "Updating…"
+                    : userResult.tier === 'admin'
+                    ? "Set to free"
+                    : "Set to admin"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </section>
     </main>
   );

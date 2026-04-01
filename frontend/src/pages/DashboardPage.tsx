@@ -8,7 +8,8 @@ import {
   type PagesListResponse,
 } from "../services/dashboard";
 
-function formatExpiry(expiresAt: string): string {
+function formatExpiry(expiresAt: string | null): string {
+  if (!expiresAt) return "No expiry";
   const exp = new Date(expiresAt);
   const now = new Date();
   const diffMs = exp.getTime() - now.getTime();
@@ -93,7 +94,7 @@ export function DashboardPage() {
     });
   }, []);
 
-  const atLimit = data ? data.activeCount >= data.maxPages : false;
+  const atLimit = data ? (data.maxPages !== null && data.activeCount >= data.maxPages) : false;
 
   return (
     <main
@@ -107,8 +108,9 @@ export function DashboardPage() {
           </h1>
           {data && (
             <p className="mt-1 text-sm text-content-muted">
-              {data.activeCount} of {data.maxPages} active page
-              {data.maxPages !== 1 ? "s" : ""}
+              {data.maxPages === null
+                ? `${data.activeCount} active page${data.activeCount !== 1 ? "s" : ""} (unlimited)`
+                : `${data.activeCount} of ${data.maxPages} active page${data.maxPages !== 1 ? "s" : ""}`}
             </p>
           )}
         </div>
@@ -165,7 +167,7 @@ export function DashboardPage() {
             >
               Create a page
             </button>
-            {atLimit && (
+            {atLimit && data.maxPages !== null && (
               <p className="mt-2 text-xs text-content-muted">
                 Free tier: {data.maxPages} active page
                 {data.maxPages !== 1 ? "s" : ""}. Delete or wait for an
@@ -209,7 +211,7 @@ export function DashboardPage() {
                       <span>
                         {page.isActive
                           ? formatExpiry(page.expiresAt)
-                          : `Expired ${formatDate(page.expiresAt)}`}
+                          : `Expired ${page.expiresAt ? formatDate(page.expiresAt) : ""}`}
                       </span>
                       <span>{page.defaultDurationMinutes}min slots</span>
                       {page.hasNotificationEmail && (

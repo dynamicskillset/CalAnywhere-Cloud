@@ -4,6 +4,7 @@ import axios from "axios";
 import { createPage } from "../services/dashboard";
 import { TimezoneSelect } from "../components/TimezoneSelect";
 import { detectTimezone } from "../utils/timezone";
+import { useAuth } from "../contexts/AuthContext";
 
 /** Generate HH:MM options from 00:00 to 23:30 in 30-minute steps. */
 function availabilityTimeOptions(): string[] {
@@ -16,10 +17,18 @@ function availabilityTimeOptions(): string[] {
   return opts;
 }
 
-const EXPIRY_PRESETS = [
+const FREE_EXPIRY_PRESETS = [
   { label: "7 days", days: 7 },
   { label: "14 days", days: 14 },
   { label: "30 days", days: 30 },
+];
+
+const ADMIN_EXPIRY_PRESETS = [
+  { label: "7 days", days: 7 },
+  { label: "30 days", days: 30 },
+  { label: "90 days", days: 90 },
+  { label: "365 days", days: 365 },
+  { label: "No expiry", days: null },
 ];
 
 const ICAL_GUIDES: { provider: string; steps: string }[] = [
@@ -47,6 +56,8 @@ const ICAL_GUIDES: { provider: string; steps: string }[] = [
 
 export function CreatePagePage() {
   const navigate = useNavigate();
+  const { session } = useAuth();
+  const isAdmin = session?.tier === 'admin';
 
   // Form fields
   const [title, setTitle] = useState("");
@@ -65,7 +76,7 @@ export function CreatePagePage() {
   const [availabilityStart, setAvailabilityStart] = useState("09:00");
   const [availabilityEnd, setAvailabilityEnd] = useState("17:00");
   const [ownerTimezone, setOwnerTimezone] = useState(() => detectTimezone());
-  const [expiryDays, setExpiryDays] = useState(30);
+  const [expiryDays, setExpiryDays] = useState<number | null>(30);
 
   // UI state
   const [isValidating, setIsValidating] = useState(false);
@@ -565,9 +576,9 @@ export function CreatePagePage() {
           <fieldset>
             <legend className="label">How long should this page stay active?</legend>
             <div className="mt-3 flex flex-wrap gap-3">
-              {EXPIRY_PRESETS.map((preset) => (
+              {(isAdmin ? ADMIN_EXPIRY_PRESETS : FREE_EXPIRY_PRESETS).map((preset) => (
                 <button
-                  key={preset.days}
+                  key={preset.days ?? "none"}
                   type="button"
                   onClick={() => setExpiryDays(preset.days)}
                   className={`rounded-lg border px-4 py-2 text-sm font-medium transition-all ${
@@ -583,9 +594,9 @@ export function CreatePagePage() {
               ))}
             </div>
             <p className="label-hint mt-3">
-              Free tier: up to 30 days. After expiry, visitors will see a
-              message that the page is no longer active. You can create a new
-              page at any time.
+              {isAdmin
+                ? "Admin: unlimited pages, any expiry, or no expiry."
+                : "Free tier: up to 30 days. After expiry, visitors will see a message that the page is no longer active. You can create a new page at any time."}
             </p>
           </fieldset>
         </section>

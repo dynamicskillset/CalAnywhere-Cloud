@@ -18,13 +18,14 @@ export interface DashboardPage {
   hasNotificationEmail: boolean;
   isActive: boolean;
   createdAt: string;
-  expiresAt: string;
+  expiresAt: string | null;
 }
 
 export interface PagesListResponse {
   pages: DashboardPage[];
   activeCount: number;
-  maxPages: number;
+  tier: string;
+  maxPages: number | null;
 }
 
 export interface CreatePageInput {
@@ -41,7 +42,7 @@ export interface CreatePageInput {
   availabilityStart?: string;
   availabilityEnd?: string;
   ownerTimezone?: string;
-  expiryDays?: number;
+  expiryDays?: number | null;
 }
 
 export interface CreatePageResult {

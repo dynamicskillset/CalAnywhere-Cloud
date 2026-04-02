@@ -16,7 +16,7 @@ export interface SchedulingPage {
   availabilityEnd: string;   // wall-clock "HH:MM"
   ownerTimezone: string;     // IANA timezone name
   createdAt: number;
-  expiresAt: number;
+  expiresAt: number | null; // null = no expiry
 }
 
 export class InMemoryPagesStore implements IPagesStore {
@@ -30,7 +30,7 @@ export class InMemoryPagesStore implements IPagesStore {
   async get(slug: string): Promise<SchedulingPage | undefined> {
     const page = this.pages.get(slug);
     if (!page) return undefined;
-    if (Date.now() >= page.expiresAt) {
+    if (page.expiresAt !== null && Date.now() >= page.expiresAt) {
       this.pages.delete(slug);
       return undefined;
     }
@@ -45,7 +45,7 @@ export class InMemoryPagesStore implements IPagesStore {
   async purgeExpired(): Promise<void> {
     const now = Date.now();
     for (const [slug, page] of this.pages.entries()) {
-      if (now >= page.expiresAt) {
+      if (page.expiresAt !== null && now >= page.expiresAt) {
         this.pages.delete(slug);
       }
     }

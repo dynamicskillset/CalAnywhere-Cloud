@@ -35,7 +35,7 @@ export class PgPagesStore implements IPagesStore {
           page.availabilityEnd ?? '17:00',
           page.ownerTimezone ?? 'UTC',
           new Date(page.createdAt).toISOString(),
-          new Date(page.expiresAt).toISOString(),
+          page.expiresAt != null ? new Date(page.expiresAt).toISOString() : null,
         ]
       );
 
@@ -83,7 +83,7 @@ export class PgPagesStore implements IPagesStore {
          ) AS calendar_urls
        FROM scheduling_pages sp
        LEFT JOIN page_calendars pc ON pc.page_id = sp.id
-       WHERE sp.slug = $1 AND sp.expires_at > NOW()
+       WHERE sp.slug = $1 AND (sp.expires_at IS NULL OR sp.expires_at > NOW())
        GROUP BY sp.id`,
       [slug]
     );
@@ -107,13 +107,13 @@ export class PgPagesStore implements IPagesStore {
       availabilityEnd: row.availability_end ?? '17:00',
       ownerTimezone: row.owner_timezone ?? 'UTC',
       createdAt: new Date(row.created_at).getTime(),
-      expiresAt: new Date(row.expires_at).getTime(),
+      expiresAt: row.expires_at ? new Date(row.expires_at).getTime() : null,
     };
   }
 
   async getPageId(slug: string): Promise<string | null> {
     const result = await this.pool.query(
-      "SELECT id FROM scheduling_pages WHERE slug = $1 AND expires_at > NOW()",
+      "SELECT id FROM scheduling_pages WHERE slug = $1 AND (expires_at IS NULL OR expires_at > NOW())",
       [slug]
     );
     return result.rows.length > 0 ? result.rows[0].id : null;
@@ -121,7 +121,7 @@ export class PgPagesStore implements IPagesStore {
 
   async purgeExpired(): Promise<void> {
     await this.pool.query(
-      "DELETE FROM scheduling_pages WHERE expires_at < NOW()"
+      "DELETE FROM scheduling_pages WHERE expires_at IS NOT NULL AND expires_at < NOW()"
     );
   }
 }

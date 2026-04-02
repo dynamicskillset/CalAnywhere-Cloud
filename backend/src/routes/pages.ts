@@ -444,6 +444,12 @@ pagesRouter.post("/:slug/requests", requestLimiter, async (req, res) => {
   }
 });
 
+// HEAD /api/pages/:slug/requests/:token/confirm - benign response for email safety scanners
+// Express routes HEAD to GET handlers by default; this prevents scanners from consuming one-time tokens
+pagesRouter.head("/:slug/requests/:token/confirm", (_req, res) => {
+  res.status(200).end();
+});
+
 // GET /api/pages/:slug/requests/:token/confirm - confirm an appointment request
 pagesRouter.get("/:slug/requests/:token/confirm", confirmLimiter, async (req, res) => {
   const { slug, token } = req.params;
